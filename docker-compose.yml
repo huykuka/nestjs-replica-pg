@@ -1,4 +1,3 @@
-
 services:
   postgres-primary:
     image: bitnami/postgresql:latest
@@ -10,6 +9,7 @@ services:
       POSTGRESQL_DATABASE: ${POSTGRES_DB:-postgres-nestjs}
       POSTGRESQL_REPLICATION_USER: ${REPLICATION_USER:-replicator}
       POSTGRESQL_REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-replicator}
+      POSTGRESQL_CLIENT_MIN_MESSAGES: info
     volumes:
       - primary_data:/bitnami/postgresql
     ports:
@@ -26,6 +26,7 @@ services:
       POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRESQL_REPLICATION_USER: ${REPLICATION_USER:-replicator}
       POSTGRESQL_REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-replicator}
+      POSTGRESQL_CLIENT_MIN_MESSAGES: info
     volumes:
       - replica_data:/bitnami/postgresql
     depends_on:
