@@ -1,0 +1,39 @@
+
+services:
+  postgres-primary:
+    image: bitnami/postgresql:latest
+    container_name: postgres-primary
+    environment:
+      POSTGRESQL_REPLICATION_MODE: master
+      POSTGRESQL_USERNAME: ${POSTGRES_USER:-postgres}
+      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRESQL_DATABASE: ${POSTGRES_DB:-postgres-nestjs}
+      POSTGRESQL_REPLICATION_USER: ${REPLICATION_USER:-replicator}
+      POSTGRESQL_REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-replicator}
+    volumes:
+      - primary_data:/bitnami/postgresql
+    ports:
+      - "5432:5432"
+
+  postgres-replica:
+    image: bitnami/postgresql:latest
+    container_name: postgres-replica
+    environment:
+      POSTGRESQL_REPLICATION_MODE: slave
+      POSTGRESQL_MASTER_HOST: postgres-primary
+      POSTGRESQL_MASTER_PORT_NUMBER: 5432
+      POSTGRESQL_USERNAME: ${POSTGRES_USER:-postgres}
+      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRESQL_REPLICATION_USER: ${REPLICATION_USER:-replicator}
+      POSTGRESQL_REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-replicator}
+    volumes:
+      - replica_data:/bitnami/postgresql
+    depends_on:
+      - postgres-primary
+    ports:
+      - "5433:5432"
+
+
+volumes:
+  primary_data:
+  replica_data:
