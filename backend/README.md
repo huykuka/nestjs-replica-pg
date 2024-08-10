@@ -1,73 +1,116 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+## Postgres - Read Replicas with Nestjs-Prisma
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+### Description
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+This project demonstrates how to set up a NestJS application with Prisma to use PostgreSQL read replicas. The primary
+focus is on configuring Prisma extensions to handle read replicas effectively. The project includes Docker setup for
+easy deployment and testing.
 
-## Description
+### Prerequisites
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- Node.js (v18 or later)
+- npm (v6 or later)
+- Docker
+- dotenv-cli is globally installed
+    ```bash
+    npm i -g dotenv-cli
+    ```
 
-## Installation
+## Docker Setup
+
+In the main directory, run the following command to start the Docker containers:
+This docker-compose file spins up 2 PostgreSQL databases, one for the primary database and the other for the read.
+replica. The primary database is accessible at `localhost:5432` and the read replica is accessible at `localhost:5433`
+replica.
+
+1. Start the containers
+    ```bash
+    docker-compose up -d
+    ```
+
+## Prisma Initialization
+
+1. To initialize Prisma, run the following command:
+
+    ```bash
+    npx prisma generate
+    ```
+
+   This command generates the Prisma client based on the schema defined in `prisma/schema.prisma`.
+2. To create the database schema, run the following command:
+
+    ```bash
+    npm run prisma:migrate
+    ```
+
+   This command creates the database schema based on the migration files in the `prisma/migrations` directory.
+
+## Prisma Extension Setup
+
+This project uses the `nestjs-prisma` package to handle Prisma client configuration. The `ExtendedPrismaConfigService`.
+
+To use read replicas with Prisma, you need to create a custom Prisma client factory that configures the Prisma client to
+use the read replica database URL.
+
+### Configuration
+
+1. Create a `backend/src/prisma/extension/extended-prisma-client.ts` file: <br>
+   This file extends the Prisma client with read replicas.
+
+ ```typescript
+ import {PrismaClient} from '@prisma/client';
+import {readReplicas} from '@prisma/extension-read-replicas';
+
+export const extendedPrismaClient = (options?: any) => {
+    return new PrismaClient(options).$extends(
+        readReplicas({
+            url: process.env.DATABASE_SECONDARY_URL,
+        }),
+    );
+};
+
+export type ExtendedPrismaClient = ReturnType<typeof extendedPrismaClient>;
+ ```
+
+2. Create a `backend/src/prisma/extension/extended-prisma-config.service.ts` file: <br>
+   This file create a Prisma client to connect to the primary databse
+    ```typescript
+    import { Injectable } from '@nestjs/common';
+    import { CustomPrismaClientFactory } from 'nestjs-prisma';
+    import {
+      type ExtendedPrismaClient,
+      extendedPrismaClient,
+    } from './extended-prisma-client';
+    import { ConfigService } from '@nestjs/config';
+
+    @Injectable()
+    export class ExtendedPrismaConfigService
+      implements CustomPrismaClientFactory<ExtendedPrismaClient>
+    {
+      constructor(readonly configService: ConfigService) {}
+
+      createPrismaClient(): ExtendedPrismaClient {
+        const options = {
+          datasources: {
+            db: {
+              url: this.configService.get('DATABASE_URL'),
+            },
+          },
+        };
+
+        return extendedPrismaClient(options);
+      }
+    }
+    ```
+
+### Running the App
+
+    ```bash
+    npm run start
+    ```
+
+### Testing
 
 ```bash
-$ npm install
+npm run test
 ```
-
-## Running the app
-
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Test
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).
