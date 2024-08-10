@@ -1,10 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { CustomPrismaClientFactory } from 'nestjs-prisma';
-import { type ExtendedPrismaClient, extendedPrismaClient } from './extended-prisma-client';
+import {
+  type ExtendedPrismaClient,
+  extendedPrismaClient,
+} from './extended-prisma-client';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class ExtendedPrismaConfigService implements CustomPrismaClientFactory<ExtendedPrismaClient> {
+export class ExtendedPrismaConfigService
+  implements CustomPrismaClientFactory<ExtendedPrismaClient>
+{
   constructor(readonly configService: ConfigService) {
     // TODO inject any other service here like the `ConfigService`
   }
@@ -16,7 +21,6 @@ export class ExtendedPrismaConfigService implements CustomPrismaClientFactory<Ex
           url: this.configService.get('DATABASE_URL'),
         },
       },
-
     };
 
     // you could pass options to your `PrismaClient` instance here
